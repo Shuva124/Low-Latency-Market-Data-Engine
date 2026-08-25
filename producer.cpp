@@ -86,10 +86,10 @@ int main() {
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // 4 Producer Threads: BTC, ETH, SOL workers + 1 Network TX thread
-    Thread btc_t(ticker_worker, "BTC-USD", 65000.0, &tx_queue);
-    Thread eth_t(ticker_worker, "ETH-USD", 3500.0, &tx_queue);
-    Thread sol_t(ticker_worker, "SOL-USD", 145.0, &tx_queue);
-    Thread tx_t(network_tx_worker, sock, &tx_queue, total_expected);
+    std::thread btc_t(ticker_worker, "BTC-USD", 65000.0, &tx_queue);
+    std::thread eth_t(ticker_worker, "ETH-USD", 3500.0, &tx_queue);
+    std::thread sol_t(ticker_worker, "SOL-USD", 145.0, &tx_queue);
+    std::thread tx_t(network_tx_worker, sock, &tx_queue, total_expected);
 
     btc_t.join();
     eth_t.join();

@@ -23,12 +23,18 @@ void tcp_rx_worker(SOCKET client_sock, SimpleQueue<MarketTick>* rx_queue, std::a
         char* ptr = reinterpret_cast<char*>(buffer.data());
         size_t bytes_left = chunk * sizeof(MarketTick);
 
+        bool sock_error = false;
         while (bytes_left > 0) {
             int rec = recv(client_sock, ptr, static_cast<int>(bytes_left), 0);
-            if (rec <= 0) break;
+            if (rec <= 0) {
+                sock_error = true;
+                break;
+            }
             ptr += rec;
             bytes_left -= rec;
         }
+
+        if (sock_error) break;
 
         std::vector<MarketTick> batch(buffer.begin(), buffer.begin() + chunk);
         rx_queue->push_batch(batch);
@@ -101,8 +107,8 @@ int main() {
     auto start_time = std::chrono::high_resolution_clock::now();
 
     // 3 Engine Threads: TCP Rx thread, Analytics worker, Stats reporter
-    Thread rx_t(tcp_rx_worker, client_sock, &rx_queue, &done);
-    Thread analytics_t(analytics_worker, &rx_queue, &stats, &processed, &total_lat);
+    std::thread rx_t(tcp_rx_worker, client_sock, &rx_queue, &done);
+    std::thread analytics_t(analytics_worker, &rx_queue, &stats, &processed, &total_lat);
 
     rx_t.join();
     analytics_t.join();
@@ -138,7 +144,7 @@ int main() {
 
     // Output Benchmark Report
     uint64_t total_msg = processed.load();
-    double throughput = elapsed > 0 ? (total_msg / elapsed) : 0.t0;
+    double throughput = elapsed > 0 ? (total_msg / elapsed) : 0.0;
     double avg_lat = total_msg > 0 ? ((total_lat.load() / (double)total_msg) / 1000.0) : 0.0;
 
     std::cout << "\n========================================================\n";
